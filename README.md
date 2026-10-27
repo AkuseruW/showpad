@@ -23,6 +23,10 @@ Invalid client IDs return `401`.
 
 Accepted requests return `200` with `{"success":true}`.
 
+`/foo`: fixed window. The quota resets at each window boundary.
+Exhausted quotas return `429` with `Retry-After` in seconds.
+Storage errors return `503`.
+
 Settings: `HOST`, `PORT`.
 
 ## Tests
