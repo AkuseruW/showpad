@@ -42,10 +42,11 @@ export function buildApp(options: AppOptions = {}) {
           }
 
           const algorithm = route === "foo" ? fixedWindow : tokenBucket;
+          const policy = client[route];
           try {
             const decision = await store.update(
-              JSON.stringify([id, route]),
-              (state) => algorithm(state, client[route], clock()),
+              JSON.stringify([id, route, policy.limit, policy.windowMs]),
+              (state) => algorithm(state, policy, clock()),
             );
 
             if (!decision.allowed) {

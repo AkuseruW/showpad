@@ -11,6 +11,13 @@ pnpm dev
 
 Local URL: `http://127.0.0.1:3000`.
 
+Storage defaults to memory. With Redis:
+
+```sh
+docker compose up -d --wait
+STORAGE=redis pnpm dev
+```
+
 ## API
 
 ```sh
@@ -29,12 +36,19 @@ Storage errors return `503`.
 
 `/bar`: token bucket. Tokens refill continuously up to the bucket capacity.
 
-Settings: `HOST`, `PORT`.
+Memory keeps counters in the Node process. Redis persists them and shares quotas
+between instances. Updates use Lua compare-and-set.
+
+Settings: `HOST`, `PORT`, `CLIENTS_FILE`, `STORAGE`, `REDIS_URL`.
+`docker compose down -v` deletes the Redis volume.
 
 ## Tests
 
 ```sh
 pnpm check
+pnpm test:integration
 ```
 
 `pnpm check`: types, unit tests, formatting, build.
+
+Redis must be running for integration tests. They use temporary keys.
