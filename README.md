@@ -47,8 +47,11 @@ Settings: `HOST`, `PORT`, `CLIENTS_FILE`, `STORAGE`, `REDIS_URL`.
 ```sh
 pnpm check
 pnpm test:integration
+pnpm demo
 ```
 
 `pnpm check`: types, unit tests, formatting, build.
 
 Redis must be running for integration tests. They use temporary keys.
+
+`pnpm demo memory` runs without Redis.

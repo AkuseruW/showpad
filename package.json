@@ -11,6 +11,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "esbuild src/server.ts --bundle --platform=node --target=node24 --format=esm --packages=external --outfile=dist/server.js",
     "start": "node dist/server.js",
+    "demo": "node --import tsx scripts/demo.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "test:integration": "node --import tsx --test test/integration/*.test.ts",
     "test:watch": "node --import tsx --test --watch test/*.test.ts",
