@@ -1,0 +1,10 @@
+{
+  "client-1": {
+    "foo": { "limit": 3, "windowMs": 10000 },
+    "bar": { "limit": 3, "windowMs": 10000 }
+  },
+  "client-2": {
+    "foo": { "limit": 6, "windowMs": 10000 },
+    "bar": { "limit": 6, "windowMs": 10000 }
+  }
+}

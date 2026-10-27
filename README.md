@@ -14,9 +14,12 @@ Local URL: `http://127.0.0.1:3000`.
 ## API
 
 ```sh
-curl -i http://127.0.0.1:3000/foo
-curl -i http://127.0.0.1:3000/bar
+curl -i -H 'Authorization: Bearer client-1' http://127.0.0.1:3000/foo
+curl -i -H 'Authorization: Bearer client-2' http://127.0.0.1:3000/bar
 ```
+
+Client IDs and limits: [config/clients.json](config/clients.json).
+Invalid client IDs return `401`.
 
 Accepted requests return `200` with `{"success":true}`.
 

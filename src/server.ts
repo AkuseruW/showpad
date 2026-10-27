@@ -1,6 +1,8 @@
 import { buildApp } from "./app";
+import { loadClients } from "./clients";
 
 const app = buildApp({
+  clients: loadClients(process.env.CLIENTS_FILE),
   logger: { redact: ["req.headers.authorization"] },
 });
 
