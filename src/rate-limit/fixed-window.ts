@@ -6,11 +6,12 @@ export function fixedWindow(
   policy: RateLimitPolicy,
   now: number,
 ): StateChange {
+  const previous = state?.kind === "fixed-window" ? state : undefined;
   const windowStart = Math.max(
     Math.floor(now / policy.windowMs) * policy.windowMs,
-    state?.windowStart ?? 0,
+    previous?.windowStart ?? 0,
   );
-  const count = state?.windowStart === windowStart ? state.count : 0;
+  const count = previous?.windowStart === windowStart ? previous.count : 0;
   const allowed = count < policy.limit;
   const ttlMs = Math.max(1, Math.ceil(windowStart + policy.windowMs - now));
 

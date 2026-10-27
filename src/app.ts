@@ -1,6 +1,7 @@
 import Fastify, { type FastifyServerOptions } from "fastify";
 import { type Clients, loadClients, parseClients } from "./clients";
 import { fixedWindow } from "./rate-limit/fixed-window";
+import { tokenBucket } from "./rate-limit/token-bucket";
 import type { CounterStore } from "./rate-limit/types";
 import { MemoryStore } from "./storage/memory";
 
@@ -28,37 +29,34 @@ export function buildApp(options: AppOptions = {}) {
           const id = /^Bearer +(\S+)$/i.exec(
             request.headers.authorization ?? "",
           )?.[1];
+          const client =
+            id !== undefined && Object.hasOwn(clients, id)
+              ? clients[id]
+              : undefined;
 
-          if (id === undefined || !Object.hasOwn(clients, id)) {
+          if (id === undefined || client === undefined) {
             return reply
               .code(401)
               .header("WWW-Authenticate", "Bearer")
               .send({ error: "unauthorized" });
           }
 
-          const client = clients[id];
-          if (route === "foo" && client !== undefined) {
-            try {
-              const decision = await store.update(
-                JSON.stringify([id, route]),
-                (state) => fixedWindow(state, client[route], clock()),
-              );
+          const algorithm = route === "foo" ? fixedWindow : tokenBucket;
+          try {
+            const decision = await store.update(
+              JSON.stringify([id, route]),
+              (state) => algorithm(state, client[route], clock()),
+            );
 
-              if (!decision.allowed) {
-                return reply
-                  .code(429)
-                  .header(
-                    "Retry-After",
-                    Math.ceil(decision.retryAfterMs / 1000),
-                  )
-                  .send({ error: "rate limit exceeded" });
-              }
-            } catch (error) {
-              request.log.error({ err: error }, "Rate limiter unavailable");
+            if (!decision.allowed) {
               return reply
-                .code(503)
-                .send({ error: "rate limiter unavailable" });
+                .code(429)
+                .header("Retry-After", Math.ceil(decision.retryAfterMs / 1000))
+                .send({ error: "rate limit exceeded" });
             }
+          } catch (error) {
+            request.log.error({ err: error }, "Rate limiter unavailable");
+            return reply.code(503).send({ error: "rate limiter unavailable" });
           }
         },
       },

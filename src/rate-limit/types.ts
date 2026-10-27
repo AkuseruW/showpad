@@ -1,8 +1,16 @@
-export type CounterState = {
+export type FixedWindowState = {
   kind: "fixed-window";
   windowStart: number;
   count: number;
 };
+
+export type TokenBucketState = {
+  kind: "token-bucket";
+  credit: string;
+  updatedAt: number;
+};
+
+export type CounterState = FixedWindowState | TokenBucketState;
 
 export type Decision = {
   allowed: boolean;

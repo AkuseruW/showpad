@@ -27,6 +27,8 @@ Accepted requests return `200` with `{"success":true}`.
 Exhausted quotas return `429` with `Retry-After` in seconds.
 Storage errors return `503`.
 
+`/bar`: token bucket. Tokens refill continuously up to the bucket capacity.
+
 Settings: `HOST`, `PORT`.
 
 ## Tests
