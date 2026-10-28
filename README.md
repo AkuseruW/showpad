@@ -18,6 +18,12 @@ docker compose up -d --wait
 STORAGE=redis pnpm dev
 ```
 
+With both services in Docker:
+
+```sh
+docker compose --profile app up --build -d --wait
+```
+
 ## API
 
 ```sh
