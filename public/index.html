@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Showpad API</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f4f1e9;
+        color: #1d2c25;
+        font:
+          16px/1.6 "Trebuchet MS",
+          sans-serif;
+      }
+      main {
+        width: min(860px, calc(100% - 40px));
+        margin: 8vh auto;
+      }
+      h1 {
+        margin: 12px 0;
+        font:
+          48px/1.1 Georgia,
+          serif;
+      }
+      .workspace {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 32px;
+        margin-top: 36px;
+        padding-top: 28px;
+        border-top: 2px solid #1d2c25;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+      }
+      input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #829086;
+        border-radius: 3px;
+        background: #fffdf8;
+        color: inherit;
+        font: 16px monospace;
+      }
+      #client-hint {
+        margin: 8px 0 0;
+        color: #536157;
+        font-size: 13px;
+      }
+      .endpoints {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-top: 24px;
+      }
+      button {
+        padding: 16px 12px;
+        border: 1px solid #1d2c25;
+        border-radius: 3px;
+        background: #1d2c25;
+        color: #fffdf8;
+        cursor: pointer;
+        text-align: left;
+      }
+      button span {
+        display: block;
+        font: bold 17px monospace;
+      }
+      button small {
+        display: block;
+        margin-top: 6px;
+        color: #d0dbd2;
+      }
+      button:hover {
+        background: #354d40;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+      button:focus-visible,
+      input:focus-visible {
+        outline: 3px solid #ba652c;
+        outline-offset: 3px;
+      }
+      .response {
+        min-height: 290px;
+        padding: 24px;
+        background: #172820;
+        color: #edf2e7;
+        border-radius: 3px;
+      }
+      .response-label {
+        margin: 0 0 12px;
+        color: #b9c8bb;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+      }
+      #status {
+        display: block;
+        font: bold 22px monospace;
+      }
+      #request,
+      #retry {
+        min-height: 20px;
+        color: #c9d5ca;
+        font-size: 13px;
+      }
+      pre {
+        margin: 24px 0 12px;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+        font-size: 15px;
+      }
+      @media (max-width: 600px) {
+        main {
+          margin: 36px auto;
+        }
+        h1 {
+          font-size: 38px;
+        }
+        .workspace {
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Rate limits</h1>
+      </header>
+      <div class="workspace">
+        <form id="demo">
+          <label for="client">Client ID</label>
+          <input
+            id="client"
+            list="clients"
+            aria-describedby="client-hint"
+            value="client-1"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <datalist id="clients">
+            <option value="client-1"></option>
+            <option value="client-2"></option>
+          </datalist>
+          <p id="client-hint">Try client-1, client-2, or an unknown ID.</p>
+          <div class="endpoints">
+            <button type="submit" value="/foo">
+              <span>GET /foo</span><small>Fixed window</small>
+            </button>
+            <button type="submit" value="/bar">
+              <span>GET /bar</span><small>Token bucket</small>
+            </button>
+          </div>
+        </form>
+        <section class="response" aria-label="API response">
+          <p class="response-label">Response</p>
+          <output id="status" aria-live="polite">Ready</output>
+          <div id="request"></div>
+          <pre id="body">{}</pre>
+          <div id="retry"></div>
+        </section>
+      </div>
+    </main>
+    <script>
+      const form = document.querySelector("#demo");
+      const client = document.querySelector("#client");
+      const status = document.querySelector("#status");
+      const request = document.querySelector("#request");
+      const body = document.querySelector("#body");
+      const retry = document.querySelector("#retry");
+      const buttons = [...form.querySelectorAll("button")];
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const endpoint = event.submitter?.value ?? "/foo";
+        buttons.forEach((button) => (button.disabled = true));
+        status.textContent = "Sending...";
+        request.textContent = `GET ${endpoint} (${client.value.trim()})`;
+        retry.textContent = "";
+
+        try {
+          const response = await fetch(endpoint, {
+            headers: { Authorization: `Bearer ${client.value.trim()}` },
+            signal: AbortSignal.timeout(5000),
+          });
+          status.textContent = `${response.status} ${response.statusText}`;
+          body.textContent = JSON.stringify(await response.json(), null, 2);
+          const seconds = response.headers.get("Retry-After");
+          retry.textContent = seconds ? `Retry in ${seconds} s` : "";
+        } catch (error) {
+          status.textContent = "Request failed";
+          body.textContent = error.message;
+        } finally {
+          buttons.forEach((button) => (button.disabled = false));
+        }
+      });
+    </script>
+  </body>
+</html>

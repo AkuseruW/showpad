@@ -1,6 +1,6 @@
 # Showpad API throttling
 
-Demo URL: `http://35.181.206.201`.
+[Demo](http://35.181.206.201/)
 
 ## Run
 
@@ -12,9 +12,9 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Local URL: `http://127.0.0.1:3000`.
+Local URL: `http://127.0.0.1:3000`. Storage defaults to memory.
 
-Storage defaults to memory. With Redis:
+With Redis:
 
 ```sh
 docker compose up -d --wait
@@ -34,26 +34,23 @@ curl -i -H 'Authorization: Bearer client-1' http://127.0.0.1:3000/foo
 curl -i -H 'Authorization: Bearer client-2' http://127.0.0.1:3000/bar
 ```
 
-Client IDs and limits: [config/clients.json](config/clients.json).
-Invalid client IDs return `401`.
+Limits are in [config/clients.json](config/clients.json): 3 requests for
+`client-1`, 6 for `client-2`, per 10 seconds on each route.
 
-Accepted requests return `200` with `{"success":true}`.
+- `/foo`: fixed window. The quota resets at each window boundary.
+- `/bar`: token bucket. Tokens refill continuously up to the bucket capacity.
 
-`/foo`: fixed window. The quota resets at each window boundary.
-Exhausted quotas return `429` with `Retry-After` in seconds.
-Storage errors return `503`.
-
-`/bar`: token bucket. Tokens refill continuously up to the bucket capacity.
+Responses: `200` with `{"success":true}`, `401` for invalid client IDs,
+`429` when the quota is exhausted, `503` when storage is unavailable.
+`Retry-After` gives the wait in seconds after a `429`.
 
 Memory keeps counters in the Node process. Redis persists them and shares quotas
-between instances. Updates use Lua compare-and-set.
-
-Conflicting updates retry for up to two seconds.
-
+between instances. Updates use Lua compare-and-set with a two-second timeout.
 Redis must be running at startup; the client reconnects after later outages.
 
 Settings: `HOST`, `PORT`, `CLIENTS_FILE`, `STORAGE`, `REDIS_URL`.
-`docker compose down -v` deletes the Redis volume.
+`API_PORT` sets the port published by Compose. `docker compose down -v` deletes
+the Redis volume.
 
 ## Tests
 
@@ -64,9 +61,7 @@ pnpm demo
 ```
 
 `pnpm check`: types, unit tests, formatting, build.
-
-Redis must be running for integration tests. They use temporary keys.
-
+Integration tests and the demo need Redis and use temporary keys.
 `pnpm demo memory` runs without Redis.
 
 ## AWS
