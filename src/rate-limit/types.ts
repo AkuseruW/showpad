@@ -1,3 +1,5 @@
+import type { RateLimitPolicy } from "../clients";
+
 export type FixedWindowState = {
   kind: "fixed-window";
   windowStart: number;
@@ -24,6 +26,12 @@ export type StateChange = {
 };
 
 export type StateTransition = (state: CounterState | undefined) => StateChange;
+
+export type RateLimitAlgorithm = (
+  state: CounterState | undefined,
+  policy: RateLimitPolicy,
+  now: number,
+) => StateChange;
 
 export interface CounterStore {
   update(key: string, transition: StateTransition): Promise<Decision>;

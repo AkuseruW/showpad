@@ -1,5 +1,5 @@
-import type { RedisClientType } from "redis";
 import { setTimeout } from "node:timers/promises";
+import type { RedisClientType } from "redis";
 import type {
   CounterState,
   CounterStore,
@@ -7,10 +7,8 @@ import type {
   StateTransition,
 } from "../rate-limit/types";
 
-type RedisCommands = Pick<RedisClientType, "get" | "eval">;
-
 type RedisConnection = {
-  withAbortSignal(signal: AbortSignal): RedisCommands;
+  withAbortSignal(signal: AbortSignal): Pick<RedisClientType, "get" | "eval">;
 };
 
 const MAX_BACKOFF_MS = 50;
@@ -38,7 +36,7 @@ export class RedisStore implements CounterStore {
     let backoffMs = 1;
 
     try {
-      for (;;) {
+      while (true) {
         const value = await client.get(redisKey);
         const state =
           value === null ? undefined : (JSON.parse(value) as CounterState);

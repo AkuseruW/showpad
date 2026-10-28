@@ -1,16 +1,13 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Route } from "../clients";
-import { fixedWindow } from "../rate-limit/fixed-window";
-import { tokenBucket } from "../rate-limit/token-bucket";
-import type { CounterStore } from "../rate-limit/types";
+import type { CounterStore, RateLimitAlgorithm } from "../rate-limit/types";
 
 export function createRateLimit(
   route: Route,
+  algorithm: RateLimitAlgorithm,
   store: CounterStore,
   clock: () => number,
 ) {
-  const algorithm = route === "foo" ? fixedWindow : tokenBucket;
-
   return async function rateLimit(
     request: FastifyRequest,
     reply: FastifyReply,
