@@ -1,8 +1,11 @@
 # Showpad API throttling
 
+Demo URL: `http://35.181.206.201`.
+
 ## Run
 
 Node.js 24, pnpm 11.25.0.
+Docker with Compose is needed for Redis and container runs.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -83,7 +86,8 @@ terraform -chdir=infra plan -out=deployment.tfplan
 terraform -chdir=infra apply deployment.tfplan
 ```
 
-Terraform provisions the server. Image builds and delivery could be handled by CI/CD.
+Terraform provisions the server. The demo image was loaded manually.
+Image builds and delivery could be handled by CI/CD.
 
 Run `terraform -chdir=infra destroy` after review. A stopped instance is still
 billed. Destruction deletes Redis data; keep the local state until teardown.
