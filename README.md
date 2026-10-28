@@ -41,6 +41,8 @@ between instances. Updates use Lua compare-and-set.
 
 Conflicting updates retry for up to two seconds.
 
+Redis must be running at startup; the client reconnects after later outages.
+
 Settings: `HOST`, `PORT`, `CLIENTS_FILE`, `STORAGE`, `REDIS_URL`.
 `docker compose down -v` deletes the Redis volume.
 

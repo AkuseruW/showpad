@@ -1,18 +1,14 @@
-import { createClient } from "redis";
 import { buildApp } from "./app";
 import { loadClients } from "./clients";
 import { readSettings } from "./config";
 import { MemoryStore } from "./storage/memory";
 import { RedisStore } from "./storage/redis";
+import { createRedisClient } from "./storage/redis-client";
 
 const settings = readSettings();
 const redis =
   settings.storage === "redis"
-    ? createClient({
-        url: settings.redisUrl,
-        disableOfflineQueue: true,
-        socket: { connectTimeout: 2000, reconnectStrategy: false },
-      })
+    ? createRedisClient(settings.redisUrl)
     : undefined;
 
 const app = buildApp({

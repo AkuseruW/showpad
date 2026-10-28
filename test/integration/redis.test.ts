@@ -5,12 +5,14 @@ import { test, type TestContext } from "node:test";
 import { createClient } from "redis";
 import { buildApp } from "../../src/app";
 import { RedisStore } from "../../src/storage/redis";
+import { createRedisClient } from "../../src/storage/redis-client";
 import {
   fixedWindowContract,
   request,
   testClients,
 } from "../helpers/fixed-window-contract";
 import { tokenBucketContract } from "../helpers/token-bucket-contract";
+import { redisProxy } from "../helpers/redis-proxy";
 
 async function connect(
   t: TestContext,
@@ -140,6 +142,97 @@ test("a disconnected Redis client returns 503 on both routes", async (t) => {
     assert.deepEqual(response.json(), { error: "rate limiter unavailable" });
   }
 });
+
+test(
+  "Redis reconnects after a lost connection and preserves both quotas",
+  { timeout: 5000 },
+  async (t) => {
+    const { prefix } = await connect(t);
+    const proxy = await redisProxy(t);
+    const client = createRedisClient(proxy.url);
+    client.on("error", () => {});
+    t.after(() => {
+      if (client.isOpen) client.destroy();
+    });
+    await client.connect();
+    const policy = { limit: 3, windowMs: 60000 };
+    const app = buildApp({
+      clients: { "client-1": { foo: policy, bar: policy } },
+      clock: () => 0,
+      store: new RedisStore(client, prefix),
+    });
+    t.after(() => app.close());
+
+    for (const url of ["/foo", "/bar"]) {
+      for (let count = 0; count < 3; count++) await request(app, url);
+    }
+    const connectionId = await client.clientId();
+    const disconnected = new Promise<void>((resolve) => {
+      client.once("error", () => resolve());
+    });
+    await proxy.stop();
+    await disconnected;
+
+    for (const url of ["/foo", "/bar"]) {
+      assert.equal((await request(app, url)).statusCode, 503);
+    }
+
+    await setTimeout(150);
+    assert.equal(client.isReady, false);
+    await proxy.start();
+    const deadline = Date.now() + 3000;
+    while (!client.isReady && Date.now() < deadline) await setTimeout(10);
+    assert.ok(client.isReady, "Redis should reconnect after losing its socket");
+    assert.notEqual(await client.clientId(), connectionId);
+
+    for (const url of ["/foo", "/bar"]) {
+      assert.equal((await request(app, url)).statusCode, 429);
+    }
+  },
+);
+
+test(
+  "Redis rejects its first connection failure without retrying forever",
+  { timeout: 5000 },
+  async (t) => {
+    const proxy = await redisProxy(t);
+    await proxy.stop();
+    const client = createRedisClient(proxy.url);
+    client.on("error", () => {});
+    t.after(() => {
+      if (client.isOpen) client.destroy();
+    });
+
+    await assert.rejects(client.connect());
+    assert.equal(client.isOpen, false);
+  },
+);
+
+test(
+  "closing Redis during an outage cancels reconnection",
+  { timeout: 5000 },
+  async (t) => {
+    const proxy = await redisProxy(t);
+    const client = createRedisClient(proxy.url);
+    client.on("error", () => {});
+    t.after(() => {
+      if (client.isOpen) client.destroy();
+    });
+    await client.connect();
+    const disconnected = new Promise<void>((resolve) => {
+      client.once("error", () => resolve());
+    });
+    await proxy.stop();
+    await disconnected;
+
+    await client.close();
+    await proxy.start();
+    await setTimeout(250);
+
+    assert.equal(client.isOpen, false);
+    assert.equal(client.isReady, false);
+  },
+);
 
 test("changing a client's policy starts a quota for the new policy", async (t) => {
   const { client, prefix } = await connect(t);
