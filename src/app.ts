@@ -1,7 +1,7 @@
 import Fastify, { type FastifyServerOptions } from "fastify";
 import { type Clients, loadClients, parseClients } from "./clients";
-import { fixedWindow } from "./rate-limit/fixed-window";
-import { tokenBucket } from "./rate-limit/token-bucket";
+import { createAuthenticate } from "./hooks/authenticate";
+import { createRateLimit } from "./hooks/rate-limit";
 import type { CounterStore } from "./rate-limit/types";
 import { MemoryStore } from "./storage/memory";
 
@@ -21,49 +21,15 @@ export function buildApp(options: AppOptions = {}) {
   const clients = input === undefined ? loadClients() : parseClients(input);
   const app = Fastify(fastifyOptions);
 
-  for (const route of ["foo", "bar"] as const) {
-    app.get(
-      `/${route}`,
-      {
-        preHandler: async (request, reply) => {
-          const id = /^Bearer +(\S+)$/i.exec(
-            request.headers.authorization ?? "",
-          )?.[1];
-          const client =
-            id !== undefined && Object.hasOwn(clients, id)
-              ? clients[id]
-              : undefined;
+  app.decorateRequest("client", null);
 
-          if (id === undefined || client === undefined) {
-            return reply
-              .code(401)
-              .header("WWW-Authenticate", "Bearer")
-              .send({ error: "unauthorized" });
-          }
+  const authenticate = createAuthenticate(clients);
+  const limitFoo = createRateLimit("foo", store, clock);
+  const limitBar = createRateLimit("bar", store, clock);
+  const success = async () => ({ success: true });
 
-          const algorithm = route === "foo" ? fixedWindow : tokenBucket;
-          const policy = client[route];
-          try {
-            const decision = await store.update(
-              JSON.stringify([id, route, policy.limit, policy.windowMs]),
-              (state) => algorithm(state, policy, clock()),
-            );
-
-            if (!decision.allowed) {
-              return reply
-                .code(429)
-                .header("Retry-After", Math.ceil(decision.retryAfterMs / 1000))
-                .send({ error: "rate limit exceeded" });
-            }
-          } catch (error) {
-            request.log.error({ err: error }, "Rate limiter unavailable");
-            return reply.code(503).send({ error: "rate limiter unavailable" });
-          }
-        },
-      },
-      async () => ({ success: true }),
-    );
-  }
+  app.get("/foo", { preHandler: [authenticate, limitFoo] }, success);
+  app.get("/bar", { preHandler: [authenticate, limitBar] }, success);
 
   return app;
 }

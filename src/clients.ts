@@ -7,9 +7,9 @@ export type RateLimitPolicy = Readonly<{
   windowMs: number;
 }>;
 
-export type Clients = Readonly<
-  Record<string, Readonly<Record<Route, RateLimitPolicy>>>
->;
+export type ClientPolicies = Readonly<Record<Route, RateLimitPolicy>>;
+
+export type Clients = Readonly<Record<string, ClientPolicies>>;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
