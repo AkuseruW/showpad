@@ -65,3 +65,25 @@ pnpm demo
 Redis must be running for integration tests. They use temporary keys.
 
 `pnpm demo memory` runs without Redis.
+
+## AWS
+
+`infra/` contains the Terraform configuration for Lightsail in `eu-west-3`.
+The API and Redis run on one instance. The `micro_3_0` plan costs USD 7/month
+before taxes, excluding transfer overages. Port 80 is public; SSH is restricted
+to `admin_cidr`.
+
+Use an authenticated AWS profile, an RSA SSH key at `~/.ssh/showpad-demo`, and
+set `admin_cidr` to your public IPv4 with `/32` in `infra/terraform.tfvars`.
+
+```sh
+terraform -chdir=infra init
+terraform -chdir=infra validate
+terraform -chdir=infra plan -out=deployment.tfplan
+terraform -chdir=infra apply deployment.tfplan
+```
+
+Terraform provisions the server. Image builds and delivery could be handled by CI/CD.
+
+Run `terraform -chdir=infra destroy` after review. A stopped instance is still
+billed. Destruction deletes Redis data; keep the local state until teardown.

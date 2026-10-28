@@ -5,3 +5,9 @@ coverage/
 .env
 .DS_Store
 *.log
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+.terraform.tfstate.lock.info
