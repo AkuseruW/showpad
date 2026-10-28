@@ -39,6 +39,8 @@ Storage errors return `503`.
 Memory keeps counters in the Node process. Redis persists them and shares quotas
 between instances. Updates use Lua compare-and-set.
 
+Conflicting updates retry for up to two seconds.
+
 Settings: `HOST`, `PORT`, `CLIENTS_FILE`, `STORAGE`, `REDIS_URL`.
 `docker compose down -v` deletes the Redis volume.
 

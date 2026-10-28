@@ -168,3 +168,53 @@ test("changing a client's policy starts a quota for the new policy", async (t) =
     assert.equal((await request(updated, url)).statusCode, 429);
   }
 });
+
+for (const url of ["/foo", "/bar"]) {
+  test(`${url} admits 100 concurrent requests below a quota of 1000`, async (t) => {
+    const { client, prefix } = await connect(t);
+    const policy = { limit: 1000, windowMs: 60000 };
+    const app = buildApp({
+      clients: { "client-1": { foo: policy, bar: policy } },
+      clock: () => 0,
+      store: new RedisStore(client, prefix),
+    });
+    t.after(() => app.close());
+
+    const responses = await Promise.all(
+      Array.from({ length: 100 }, () => request(app, url)),
+    );
+
+    assert.equal(
+      responses.filter((response) => response.statusCode === 200).length,
+      100,
+    );
+  });
+
+  test(`${url} enforces a quota of 100 across 200 concurrent requests and two instances`, async (t) => {
+    const first = await connect(t);
+    const second = await connect(t, first.prefix);
+    const policy = { limit: 100, windowMs: 60000 };
+    const apps = [first, second].map(({ client, prefix }) => {
+      const app = buildApp({
+        clients: { "client-1": { foo: policy, bar: policy } },
+        clock: () => 0,
+        store: new RedisStore(client, prefix),
+      });
+      t.after(() => app.close());
+      return app;
+    });
+
+    const responses = await Promise.all(
+      Array.from({ length: 200 }, (_, index) => request(apps[index % 2]!, url)),
+    );
+
+    assert.equal(
+      responses.filter((response) => response.statusCode === 200).length,
+      100,
+    );
+    assert.equal(
+      responses.filter((response) => response.statusCode === 429).length,
+      100,
+    );
+  });
+}
